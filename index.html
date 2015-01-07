@@ -1,0 +1,107 @@
+<html>
+<head>
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script>
+data = [
+ { "key": "T1", "title": "Fetch groceries", "due": "20150106", "deps": ["T2", "T3"] },
+ { "key": "T2", "title": "Buy mineral water" },
+ { "key": "T3", "title": "Buy cola", "deps": ["T4", "T5"] },
+ { "key": "T4", "title": "Look for cola" },
+ { "key": "T5", "title": "Pick up cola", "resolved": true }
+];
+</script>
+<style>
+#tasks rect {
+  fill: steelblue;
+}
+#tasks text {
+  font: 10px sans-serif;
+  text-anchor: start;
+  fill: white;
+}
+</style>
+</head>
+<body>
+
+<svg id="tasks"></svg>
+
+<script>
+
+var itemHeight = 100;
+var tasks = d3.select("#tasks")
+	.attr("width", "100%")
+	.attr("height", "100%");
+
+setOrdinal(data);
+
+var bar = tasks.selectAll("g")
+	.data(data, function(d) { return d.ord; })
+	.enter().append("g")
+		.each(setPositionByOrdinal)
+		.attr("transform", getTranslate);
+
+bar.append("rect")
+	.attr("width", 200 )
+	.attr("height", itemHeight-1);
+
+bar.append("text")
+	.attr("x", 10 )
+	.attr("y", itemHeight / 2)
+	.attr("dy", ".35em")
+	.text(function(d) { return d.title });
+
+var dragTask = d3.behavior.drag()
+	.on("dragstart", dragstart)
+	.on("drag", dragVertical)
+	.on("dragend", dragend);
+
+bar.call(dragTask);
+
+function dragstart(d, i) {
+}
+function dragVertical(d, i) {
+	d.y = d.y + d3.event.dy;
+
+	var halfHeight = itemHeight / 2;
+	var delta = d.y - (d.ord * itemHeight);
+
+	d.y = Math.min(d.y, (data.length-1) * itemHeight);
+	d.y = Math.max(d.y, 0);
+
+	if(Math.abs(delta) > halfHeight) {
+		data.sort(function(d1, d2) {
+			if(d1 === d || d2 === d) return d1.y - d2.y + Math.abs(delta);
+			else return d1.y - d2.y;
+		});
+		setOrdinal(data);
+
+		bar.filter(function(di) { return di === d ? null : di })
+			.each(setPositionByOrdinal)
+			.transition()
+			.attr("transform", getTranslate);
+	} else {
+		d3.select(this)
+			.attr("transform", getTranslate);
+	}
+}
+function dragend(d, i) {
+	bar.each(setPositionByOrdinal)
+		.transition()
+		.attr("transform", getTranslate);
+}
+
+function setOrdinal(data) {
+	var ord = 0;
+	for (var i = 0; i < data.length; i++) data[i].ord = ord++;
+}
+
+function getTranslate(d) {
+	return "translate("+d.x+","+d.y+")";
+}
+
+function setPositionByOrdinal(d) {
+	d.x = 0;
+	d.y = d.ord * itemHeight;
+}
+</script>
+</body>
