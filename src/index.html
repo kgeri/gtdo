@@ -5,23 +5,27 @@
 <script>
 data = [
  { "key": "T1", "title": "Fetch groceries", "due": "20150106", "deps": ["T2", "T3"] },
- { "key": "T2", "title": "Buy mineral water" },
+ { "key": "T2", "title": "Buy mineral water", "time": 2 },
  { "key": "T3", "title": "Buy cola", "deps": ["T4", "T5"] },
- { "key": "T4", "title": "Look for cola" },
- { "key": "T5", "title": "Pick up cola", "resolved": true }
+ { "key": "T4", "title": "Look for cola", "time": 1 },
+ { "key": "T5", "title": "Pick up cola", "time": 0.5, "resolved": true }
 ];
 </script>
 <style>
 #search {
   font-size: larger;
-  height: 1.5em;
   width: 15em;
+  height: 1.5em;
+}
+#tasks {
+  width: 100%;
+  height: 100%;
 }
 #tasks rect {
   fill: steelblue;
 }
 #tasks text {
-  font: 10px sans-serif;
+  font: 1em sans-serif;
   text-anchor: start;
   fill: white;
 }
@@ -33,7 +37,8 @@ data = [
 <svg id="tasks"></svg>
 
 <script>
-var tasks = new gtdo.ListView().bind("#tasks", data);
+var tasks = new gtdo.HierarchyView().bind("#tasks", data);
+//var tasks = new gtdo.ListView().bind("#tasks", data);
 var search = new gtdo.SearchFilter().bind("#search", tasks);
 </script>
 </body>
