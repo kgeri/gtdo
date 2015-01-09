@@ -1,13 +1,2 @@
-## Building
-The following tools are required for building (assuming Ubuntu 14.04):
-
-```bash
-sudo apt-get install npm nodejs-legacy
-sudo npm install -g bower
-```
-
-Then, the project can be built with:
-
-```bash
-./build.sh
-```
+## Getting started
+No need to build! Just fire up your browser and point it to src/index.html
