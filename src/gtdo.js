@@ -3,8 +3,6 @@ var gtdo = gtdo || {};
 
 gtdo.common = {
   keyFn: function(d) { return d.key },
-  pathKeyFn: function(d) { return "path-" + gtdo.common.keyFn(d) },
-  pathKeyIdFn: function(d) { return "#" + gtdo.common.pathKeyFn(d) },
 
   assignOrdinals: function(data) {
     var ord = 0;
@@ -33,6 +31,7 @@ gtdo.common = {
     }
 
     var root = {};
+    root.title = "All tasks";
     root.children = [];
     for(var i=0; i < data.length; i++) {
       var d = data[i];
@@ -40,10 +39,6 @@ gtdo.common = {
     }
 
     return root;
-  },
-
-  arc: function(x1, y1, x2, y2, radius) {
-    return "M"+x1+" "+y1+" A "+radius+" "+radius+" 0 0 1 "+x2+" "+y2;
   }
 }
 
@@ -162,8 +157,12 @@ gtdo.ListView = function() {
 
 gtdo.HierarchyView = function() {
   var taskItems = undefined;
+  var selectedNode = undefined;
 
-  this.bind = function(containerSelector, data) {
+  this.bind = function(containerSelector, explanationSelector, data) {
+    var svg = d3.select(containerSelector);
+    var explanation = d3.select(explanationSelector);
+
     var dim = { "width": 800, "height": 600}; // TODO get this from the SVG size
     var radius = Math.min(dim.width, dim.height) / 2;
 
@@ -171,6 +170,8 @@ gtdo.HierarchyView = function() {
     .value(function (d) { return d.time });
 
     var root = gtdo.common.toHierarchy(data);
+    selectedNode = root;
+
     var nodes = partition.nodes(root);
 
     var color = d3.scale.category20c();
@@ -194,22 +195,42 @@ gtdo.HierarchyView = function() {
       };
     };
 
-    var svg = d3.select(containerSelector);
+    var highlightTween = function() {
+      return yScale(selectedNode.y + selectedNode.dy);
+    };
+
     var tasks = svg.append("g")
     .attr("transform", "translate(" + dim.width / 2 + "," + dim.height / 2 + ")");
+
+    var highlight = svg.append("circle")
+    .attr("class", "highlight")
+    .attr("cx", dim.width / 2)
+    .attr("cy", dim.height / 2)
+    .attr("r", highlightTween);
 
     taskItems = tasks.selectAll("path")
     .data(nodes)
     .enter()
     .append("path")
     .attr("d", arc)
-    .style("fill-rule", "evenodd")
     .style("fill", function(d) { return color((d.children ? d : d.parent).title) })
     .on("click", function(d) {
+      selectedNode = d;
       taskItems.transition()
       .duration(500)
       .attrTween("d", arcTween(d));
-    });
+      highlight.transition()
+      .duration(500)
+      .attrTween("r", function(d) { return highlightTween });
+    })
+    .on("mouseover", function(d) { explanation.text(d.title) })
+    .on("mouseleave", function(d) { explanation.text(selectedNode.title) });
+
+    explanation
+    .style("visibility", "visible")
+    .style("left", dim.width + "px")
+    .style("top", "20px") // TODO compute coordinate instead
+    .text(selectedNode.title);
 
     return this;
   };

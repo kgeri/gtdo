@@ -12,10 +12,14 @@ data = [
 ];
 </script>
 <style>
+body {
+  font: sans-serif;
+}
 #search {
   font-size: larger;
   width: 15em;
   height: 1.5em;
+  display: inline;
 }
 #tasks {
   width: 100%;
@@ -23,11 +27,28 @@ data = [
 }
 #tasks rect {
   fill: steelblue;
+  stroke: white;
 }
 #tasks text {
-  font: 1em sans-serif;
+  font: 1em;
   text-anchor: start;
   fill: white;
+}
+#tasks path {
+  fill-rule: evenodd;
+  stroke: white;
+}
+#tasks .highlight {
+  stroke: orange;
+  stroke-width: 2;
+  fill: none;
+}
+#explanation {
+  position: absolute;
+  text-align: left;
+  font-size: larger;
+  color: black;
+  visibility: hidden;
 }
 </style>
 </head>
@@ -35,9 +56,10 @@ data = [
 
 <input id="search" type="search"></input>
 <svg id="tasks"></svg>
+<div id="explanation"></div>
 
 <script>
-var tasks = new gtdo.HierarchyView().bind("#tasks", data);
+var tasks = new gtdo.HierarchyView().bind("#tasks", "#explanation", data);
 //var tasks = new gtdo.ListView().bind("#tasks", data);
 var search = new gtdo.SearchFilter().bind("#search", tasks);
 </script>
