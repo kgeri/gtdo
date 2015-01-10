@@ -73,6 +73,10 @@ gtdo.SearchFilter = function() {
 }
 
 gtdo.ListView = function() {
+  // TODO compute values from screen size
+  var width = 800;
+  var height = 600;
+  var itemWidth = 200;
   var itemHeight = 100;
   var taskItems = undefined;
 
@@ -88,11 +92,11 @@ gtdo.ListView = function() {
     .call(moveToNow);
 
     taskItems.append("rect")
-    .attr("width", 200 )
+    .attr("width", itemWidth)
     .attr("height", itemHeight-1);
 
     taskItems.append("text")
-    .attr("x", 10 )
+    .attr("x", 10)
     .attr("y", itemHeight / 2)
     .attr("dy", ".35em")
     .text(function(d) { return d.title });
@@ -108,8 +112,9 @@ gtdo.ListView = function() {
   this.items = function() { return taskItems };
 
   var setPosition = function(d) {
-    d.x = 0;
-    d.y = d.ord * itemHeight;
+    var y = d.ord * itemHeight;
+    d.x = 0; // Math.floor(y / height) * itemWidth;
+    d.y = y; // y % height;
   };
 
   var moveToSmooth = function(selection) {
@@ -175,6 +180,7 @@ gtdo.HierarchyView = function() {
     var nodes = partition.nodes(root);
 
     var color = d3.scale.category20c();
+    var colorFn = function(d) { return color((d.children ? d : d.parent).title) };
     var xScale = d3.scale.linear().range([0, 2 * Math.PI]);
     var yScale = d3.scale.sqrt().range([0, radius]);
 
@@ -213,7 +219,7 @@ gtdo.HierarchyView = function() {
     .enter()
     .append("path")
     .attr("d", arc)
-    .style("fill", function(d) { return color((d.children ? d : d.parent).title) })
+    .style("fill", colorFn)
     .on("click", function(d) {
       selectedNode = d;
       taskItems.transition()
@@ -223,8 +229,14 @@ gtdo.HierarchyView = function() {
       .duration(500)
       .attrTween("r", function(d) { return highlightTween });
     })
-    .on("mouseover", function(d) { explanation.text(d.title) })
-    .on("mouseleave", function(d) { explanation.text(selectedNode.title) });
+    .on("mouseover", function(d) {
+      d3.select(this).style("fill", "gold");
+      explanation.text(d.title);
+    })
+    .on("mouseleave", function(d) {
+      taskItems.style("fill", colorFn);
+      explanation.text(selectedNode.title);
+    });
 
     explanation
     .style("visibility", "visible")
