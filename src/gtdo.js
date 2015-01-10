@@ -168,57 +168,51 @@ gtdo.HierarchyView = function() {
     var radius = Math.min(dim.width, dim.height) / 2;
 
     var partition = d3.layout.partition()
-    .size([2 * Math.PI, radius * radius])
     .value(function (d) { return d.time });
 
     var root = gtdo.common.toHierarchy(data);
-    var nodes = partition.nodes(root)
-    .filter(function(d) { return d.parent; });
+    var nodes = partition.nodes(root);
 
-    var maxDepth = d3.max(nodes, function(d) { return d.depth });
+    var color = d3.scale.category20c();
+    var xScale = d3.scale.linear().range([0, 2 * Math.PI]);
+    var yScale = d3.scale.sqrt().range([0, radius]);
+
+    var arc = d3.svg.arc()
+    .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, xScale(d.x))) })
+    .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, xScale(d.x + d.dx))) })
+    .innerRadius(function(d) { return Math.max(0, yScale(d.y)) })
+    .outerRadius(function(d) { return Math.max(0, yScale(d.y + d.dy)) });
+
+    var arcTween = function(d) {
+      var xd = d3.interpolate(xScale.domain(), [d.x, d.x + d.dx]),
+      yd = d3.interpolate(yScale.domain(), [d.y, 1]),
+      yr = d3.interpolate(yScale.range(), [d.y ? 20 : 0, radius]);
+      return function(d, i) {
+        return i
+        ? function(t) { return arc(d); }
+        : function(t) { xScale.domain(xd(t)); yScale.domain(yd(t)).range(yr(t)); return arc(d); };
+      };
+    };
 
     var svg = d3.select(containerSelector);
-
     var tasks = svg.append("g")
     .attr("transform", "translate(" + dim.width / 2 + "," + dim.height / 2 + ")");
 
     taskItems = tasks.selectAll("path")
     .data(nodes)
     .enter()
-    .append("g");
-
-    taskItems.append("path")
-    .attr("d", arc(radius, maxDepth))
-    .attr("fill-rule", "evenodd")
-    .style("fill", fill)
-    .style("opacity", 1);
+    .append("path")
+    .attr("d", arc)
+    .style("fill-rule", "evenodd")
+    .style("fill", function(d) { return color((d.children ? d : d.parent).title) })
+    .on("click", function(d) {
+      taskItems.transition()
+      .duration(500)
+      .attrTween("d", arcTween(d));
+    });
 
     return this;
   };
 
   this.items = function() { return taskItems };
-
-  var arc = function(radius, maxDepth) {
-    var md = maxDepth + 1;
-    return d3.svg.arc()
-    .startAngle(function (d) { return d.x })
-    .endAngle(function (d) { return d.x + d.dx })
-    .innerRadius(function (d) { return Math.sqrt(d.y) })
-    .outerRadius(function (d) { return Math.sqrt(d.y + d.dy) });
-  }
-
-  var hue = d3.scale.category10();
-
-  var luminance = d3.scale.sqrt()
-  .domain([0, 10]) // TODO determine scale from data
-  .clamp(true)
-  .range([90, 30]);
-
-  var fill = function(d) {
-    var p = d;
-    while (p.depth > 1) p = p.parent;
-    var c = d3.lab(hue(p.title));
-    c.l = luminance(d.value);
-    return c;
-  };
 }
