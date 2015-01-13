@@ -88,7 +88,7 @@ gtdo.ListView = function() {
     taskItems = tasks.selectAll("g")
     .data(data, gtdo.common.keyFn)
     .enter().append("g")
-    .each(setPosition)
+    .each(setPositionByOrdinal)
     .call(moveToNow);
 
     taskItems.append("rect")
@@ -99,11 +99,11 @@ gtdo.ListView = function() {
     .attr("x", 10)
     .attr("y", itemHeight / 2)
     .attr("dy", ".35em")
-    .text(function(d) { return d.title });
+    .text(function(d) { return d.title+" ["+d.ord+"]"});
 
     taskItems.call(d3.behavior.drag()
     .on("dragstart", dragstart)
-    .on("drag", dragVertical)
+    .on("drag", drag)
     .on("dragend", dragend));
 
     return this;
@@ -111,10 +111,23 @@ gtdo.ListView = function() {
 
   this.items = function() { return taskItems };
 
-  var setPosition = function(d) {
-    var y = d.ord * itemHeight;
-    d.x = 0; // Math.floor(y / height) * itemWidth;
-    d.y = y; // y % height;
+  var ordinalToPosition = function(ord) {
+    return {
+      "x": Math.floor(ord * itemHeight / height) * itemWidth,
+      "y": (ord * itemHeight) % height
+    };
+  };
+
+  var positionToOrdinal = function(x, y) {
+    var maxItems = Math.floor(height / itemHeight);
+    var row = Math.floor(y / itemHeight)
+    var column = Math.floor(x / itemWidth);
+    return column * maxItems + row;
+  }
+
+  var setPositionByOrdinal = function(d) {
+    var pos = ordinalToPosition(d.ord);
+    d.x = pos.x, d.y = pos.y;
   };
 
   var moveToSmooth = function(selection) {
@@ -125,38 +138,50 @@ gtdo.ListView = function() {
   };
 
   var dragstart = function(d) {
-    d.x = 10;
     d3.select(this).call(moveToNow);
   };
 
   var dragend = function(d) {
-    setPosition(d);
+    setPositionByOrdinal(d)
     d3.select(this).call(moveToSmooth);
   };
 
-  var dragVertical = function(d) {
-    d.x = 10;
+  var drag = function(d) {
+    d.x = d.x + d3.event.dx;
     d.y = d.y + d3.event.dy;
 
-    var halfHeight = itemHeight / 2;
-    var delta = d.y - (d.ord * itemHeight);
+    d.x = Math.max(d.x, 0), d.x = Math.min(d.x, width);
+    d.y = Math.max(d.y, 0), d.y = Math.min(d.y, height);
 
-    d.y = Math.min(d.y, (data.length-1) * itemHeight);
-    d.y = Math.max(d.y, 0);
+    d3.select(this).call(moveToNow);
 
-    if(Math.abs(delta) > halfHeight) {
-      data.sort(function(d1, d2) {
-        if(d1 === d || d2 === d) return d1.y - d2.y + Math.abs(delta);
-        else return d1.y - d2.y;
+    var oldOrd = d.ord;
+    var newOrd = positionToOrdinal(d.x + itemWidth / 2, d.y + itemHeight / 2);
+    newOrd = Math.max(newOrd, 0), newOrd = Math.min(newOrd, data.length-1);
+
+    data.forEach(function(d) { d.needsRefresh = false });
+
+    if(oldOrd < newOrd) {
+      data.forEach(function(d) {
+        if(d.ord > oldOrd && d.ord <= newOrd) {
+          d.ord -= 1;
+          d.needsRefresh = true;
+        }
       });
-      gtdo.common.assignOrdinals(data);
-
-      taskItems.filter(function(di) { return di === d ? null : di })
-      .each(setPosition)
-      .call(moveToSmooth);
-    } else {
-      d3.select(this).call(moveToNow);
+    } else if(oldOrd > newOrd) {
+      data.forEach(function(d) {
+        if(d.ord >= newOrd && d.ord < oldOrd) {
+          d.ord += 1;
+          d.needsRefresh = true;
+        }
+      });
     }
+    d.ord = newOrd;
+
+    taskItems
+    .filter(function(d) { return d.needsRefresh ? d : null })
+    .each(setPositionByOrdinal)
+    .call(moveToSmooth);
   };
 }
 
