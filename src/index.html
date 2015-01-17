@@ -20,19 +20,21 @@ data = [
 <style>
 body {
   font: sans-serif;
+  margin: 0px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 #search {
   font-size: larger;
   width: 15em;
   height: 1.5em;
+  margin: 5px;
   display: inline;
 }
 #tasks {
   position: relative;
-}
-#tasks {
-  width: 100%;
-  height: 100%;
+  flex: 1;
 }
 #tasks text {
   font: 1em;
@@ -53,6 +55,8 @@ body {
   color: white;
   background-color: steelblue;
   border: 1px solid white;
+  padding: 5px;
+  box-sizing: border-box;
   position: absolute;
 }
 #explanation {
@@ -66,15 +70,16 @@ body {
 </head>
 <body>
 
-<input id="search" type="search"></input>
-<div id="screen">
+  <input id="search" type="search"></input>
   <div id="tasks"></div>
-</div>
-<div id="explanation"></div>
+  <div id="explanation"></div>
 
 <script>
 // var tasks = new gtdo.HierarchyView().bind("#tasks", "#explanation", data);
 var tasks = new gtdo.ListView().bind("#tasks", data);
 var search = new gtdo.SearchFilter().bind("#search", tasks);
+
+d3.select(window).on("resize", tasks.resize);
+window.addEventListener("load", tasks.resize);
 </script>
 </body>

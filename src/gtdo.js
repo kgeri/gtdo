@@ -49,8 +49,8 @@ gtdo.SearchFilter = function() {
     .on("input", null)  // remove any previous listeners
     .on("input", function(d) {
       var cleanQuery = clean(this.value);
-      view.items().attr("visibility", function(d) {
-        return !cleanQuery || matches(clean(d.title), cleanQuery) ? "visible" : "hidden";
+      view.items().style("display", function(d) {
+        return !cleanQuery || matches(clean(d.title), cleanQuery) ? "" : "none";
       });
     });
     return this;
@@ -73,15 +73,16 @@ gtdo.SearchFilter = function() {
 }
 
 gtdo.ListView = function() {
+  var width = undefined;
+  var height = undefined;
   // TODO compute values from screen size
-  var width = 800;
-  var height = 600;
   var itemWidth = 200;
   var itemHeight = 100;
+  var tasks = undefined;
   var taskItems = undefined;
 
   this.bind = function(containerSelector, data) {
-    var tasks = d3.select(containerSelector);
+    tasks = d3.select(containerSelector);
 
     gtdo.common.assignOrdinals(data);
 
@@ -101,19 +102,29 @@ gtdo.ListView = function() {
     return this;
   };
 
+  this.resize = function() {
+    var bbox = tasks.node().getBoundingClientRect();
+    width = bbox.width;
+    height = bbox.height;
+    taskItems
+    .each(setPositionByOrdinal)
+    .call(moveToNow);
+  };
+
   this.items = function() { return taskItems };
 
   var updateListViewItem = function(selection) {
     selection
-    .style("width", itemWidth-2)
-    .style("height", itemHeight-2)
+    .style("width", itemWidth)
+    .style("height", itemHeight)
     .text(function(d) { return d.title });
   };
 
   var ordinalToPosition = function(ord) {
+    var maxItems = Math.floor(height / itemHeight);
     return {
-      "x": Math.floor(ord * itemHeight / height) * itemWidth,
-      "y": (ord * itemHeight) % height
+      "x": Math.floor(ord / maxItems) * itemWidth,
+      "y": (ord % maxItems) * itemHeight
     };
   };
 
