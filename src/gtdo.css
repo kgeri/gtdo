@@ -1,0 +1,70 @@
+body {
+  font: sans-serif;
+  margin: 0px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#search {
+  font-size: larger;
+  width: 15em;
+  height: 1.5em;
+  margin: 5px;
+  display: inline;
+}
+
+#tasks {
+  position: relative;
+  flex: 1;
+}
+#tasks text {
+  font: 1em;
+  text-anchor: start;
+  fill: white;
+}
+#tasks path {
+  fill-rule: evenodd;
+  stroke: white;
+}
+#tasks .highlight {
+  stroke: orange;
+  stroke-width: 2;
+  fill: none;
+}
+#tasks div {
+  color: white;
+  background-color: steelblue;
+  border: 1px solid white;
+  box-sizing: border-box;
+  position: absolute;
+}
+#tasks span.toolbar {
+  width: 20px;
+  height: 100%;
+  float: left;
+}
+#tasks span.toolbar i.fa {
+  padding: 2px;
+}
+i.fa {
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+i.fa:hover {
+  color: orange;
+}
+i.fa-bars {
+  cursor: move;
+}
+
+#explanation {
+  position: absolute;
+  text-align: left;
+  font-size: larger;
+  color: black;
+  visibility: hidden;
+}

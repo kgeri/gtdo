@@ -1,14 +1,51 @@
 "use strict";
 var gtdo = gtdo || {};
 
+/**
+* Common functions for handling task items.
+*/
 gtdo.common = {
   keyFn: function(d) { return d.key },
 
+  /**
+  * Assigns d.ord = i for each datum.
+  */
   assignOrdinals: function(data) {
     var ord = 0;
     for (var i = 0; i < data.length; i++) data[i].ord = ord++;
   },
 
+  /**
+  * Sets d.ord=newOrd, and makes sure that no other datum has the same ord in data. Shifts the other entries' .ord value if necessary.
+  * Sets d.needsRefresh on all entries as a side-effect. This is used to improve redraw performance.
+  */
+  reorder: function(d, data, newOrd) {
+    var oldOrd = d.ord;
+
+    data.forEach(function(d) { d.needsRefresh = false });
+
+    if(oldOrd < newOrd) {
+      data.forEach(function(d) {
+        if(d.ord > oldOrd && d.ord <= newOrd) {
+          d.ord -= 1;
+          d.needsRefresh = true;
+        }
+      });
+    } else if(oldOrd > newOrd) {
+      data.forEach(function(d) {
+        if(d.ord >= newOrd && d.ord < oldOrd) {
+          d.ord += 1;
+          d.needsRefresh = true;
+        }
+      });
+    }
+    d.ord = newOrd;
+  },
+
+  /**
+  * Converts the input task data array to a tree, based on the d.deps arrays.
+  * The root of this tree will be generated as 'All tasks'.
+  */
   toHierarchy: function(data) {
     var dataMap = {};
 
@@ -42,6 +79,9 @@ gtdo.common = {
   }
 }
 
+/**
+* A simple filter for fading out any DOM nodes that don't match the query.
+*/
 gtdo.SearchFilter = function() {
 
   this.bind = function(inputSelector, view) {
@@ -49,55 +89,66 @@ gtdo.SearchFilter = function() {
     .on("input", null)  // remove any previous listeners
     .on("input", function(d) {
       var cleanQuery = clean(this.value);
-      view.items().style("display", function(d) {
-        return !cleanQuery || matches(clean(d.title), cleanQuery) ? "" : "none";
+      view.items().style("opacity", function(d) {
+        return matches(clean(d.title), cleanQuery) ? "" : "0.25";
       });
     });
     return this;
   };
 
   var clean = function(text) {
-    var words = text.toLowerCase().split(" ");
+    var words = text.toLowerCase().trim().split(" ");
     return words;
   };
 
+  /**
+  * This returns true if all the words in cleanQuery are substrings of any of the words in cleanText.
+  */
   var matches = function(cleanText, cleanQuery) {
     // TODO improve text matching here
-    for(var i=0; i < cleanText.length; i++) {
-      for(var j=0; j < cleanQuery.length; j++) {
-        if(cleanText[i].indexOf(cleanQuery[j]) > -1) return true;
+    var matches = true;
+    for(var i=0; i < cleanQuery.length; i++) {
+      var matchFound = false;
+      for(var j=0; j < cleanText.length; j++) {
+        if(cleanText[j].indexOf(cleanQuery[i]) >= 0) {
+          matchFound = true;
+          break;
+        }
       }
+      matches &= matchFound;
     }
-    return false;
+    return matches;
   };
 }
 
+/**
+* A list view for creating, editing and reordering tasks.
+*/
 gtdo.ListView = function() {
   var width = undefined;
   var height = undefined;
   // TODO compute values from screen size
   var itemWidth = 200;
   var itemHeight = 100;
+  var tasksData = undefined;
   var tasks = undefined;
   var taskItems = undefined;
 
   this.bind = function(containerSelector, data) {
+    tasksData = data;
     tasks = d3.select(containerSelector);
 
-    gtdo.common.assignOrdinals(data);
+    gtdo.common.assignOrdinals(tasksData);
 
     taskItems = tasks.selectAll("div")
-    .data(data, gtdo.common.keyFn);
+    .data(tasksData, gtdo.common.keyFn);
 
     taskItems.enter()
-    .append("div")
-    .call(updateListViewItem)
+    .call(createListViewItem);
+
+    taskItems
     .each(setPositionByOrdinal)
     .call(moveToNow);
-
-    taskItems.call(d3.behavior.drag()
-    .on("drag", drag)
-    .on("dragend", dragend));
 
     return this;
   };
@@ -113,11 +164,32 @@ gtdo.ListView = function() {
 
   this.items = function() { return taskItems };
 
-  var updateListViewItem = function(selection) {
-    selection
+  var createListViewItem = function(selection) {
+    var div = selection
+    .append("div")
     .style("width", itemWidth)
-    .style("height", itemHeight)
+    .style("height", itemHeight);
+
+    var toolbar = div.append("span").attr("class", "toolbar");
+
+    var dragBtn = toolbar.append("i").attr("class", "fa fa-bars");
+    var moveUpBtn = toolbar.append("i").attr("class", "fa fa-arrow-up");
+    var moveDownBtn = toolbar.append("i").attr("class", "fa fa-arrow-down");
+    var completeBtn = toolbar.append("i").attr("class", "fa fa-check");
+
+    div.append("span")
     .text(function(d) { return d.title });
+
+    dragBtn.call(d3.behavior.drag()
+    .on("dragstart", dragstart).on("drag", drag).on("dragend", dragend));
+    moveUpBtn.on("click", function(d) {
+      gtdo.common.reorder(d, tasksData, 0);
+      taskItems.each(setPositionByOrdinal).call(moveToSmooth);
+    });
+    moveDownBtn.on("click", function(d) {
+      gtdo.common.reorder(d, tasksData, tasksData.length-1);
+      taskItems.each(setPositionByOrdinal).call(moveToSmooth);
+    });
   };
 
   var ordinalToPosition = function(ord) {
@@ -149,38 +221,25 @@ gtdo.ListView = function() {
     .style("top", function(d) { return d.y+"px" });
   };
 
+  var draggedItem = undefined;
+  var dragstart = function(d) {
+    draggedItem = d3.select(this.parentNode.parentNode);
+    taskItems.style("z-index", "0");
+    draggedItem.style("z-index", "1");
+  };
+
   var drag = function(d) {
-    d.x += d3.event.dx;
-    d.y += d3.event.dy;
+    var coords = d3.mouse(tasks.node());
+    d.x = coords[0] - 8, d.y = coords[1] - 8; // TODO d3.event.dx was acting up
     d.x = Math.max(d.x, 0), d.x = Math.min(d.x, width);
     d.y = Math.max(d.y, 0), d.y = Math.min(d.y, height);
 
-    d3.select(this).call(moveToNow);
+    draggedItem.call(moveToNow);
 
-    var oldOrd = d.ord;
     var newOrd = positionToOrdinal(d.x + itemWidth / 2, d.y + itemHeight / 2);
-    newOrd = Math.max(newOrd, 0), newOrd = Math.min(newOrd, data.length-1);
+    newOrd = Math.max(newOrd, 0), newOrd = Math.min(newOrd, tasksData.length-1);
 
-    data.forEach(function(d) { d.needsRefresh = false });
-
-    if(oldOrd < newOrd) {
-      data.forEach(function(d) {
-        if(d.ord > oldOrd && d.ord <= newOrd) {
-          d.ord -= 1;
-          d.needsRefresh = true;
-        }
-      });
-    } else if(oldOrd > newOrd) {
-      data.forEach(function(d) {
-        if(d.ord >= newOrd && d.ord < oldOrd) {
-          d.ord += 1;
-          d.needsRefresh = true;
-        }
-      });
-    } else {
-      return;
-    }
-    d.ord = newOrd;
+    gtdo.common.reorder(d, tasksData, newOrd);
 
     taskItems
     .filter(function(d) { return d.needsRefresh ? d : null })
@@ -190,10 +249,13 @@ gtdo.ListView = function() {
 
   var dragend = function(d) {
     setPositionByOrdinal(d)
-    d3.select(this).call(moveToSmooth);
+    draggedItem.call(moveToSmooth);
   };
 }
 
+/**
+* A sunburst diagram for investigating task dependencies.
+*/
 gtdo.HierarchyView = function() {
   var taskItems = undefined;
   var selectedNode = undefined;
