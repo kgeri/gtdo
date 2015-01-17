@@ -85,24 +85,16 @@ gtdo.ListView = function() {
 
     gtdo.common.assignOrdinals(data);
 
-    taskItems = tasks.selectAll("g")
-    .data(data, gtdo.common.keyFn)
-    .enter().append("g")
+    taskItems = tasks.selectAll("div")
+    .data(data, gtdo.common.keyFn);
+
+    taskItems.enter()
+    .append("div")
+    .call(updateListViewItem)
     .each(setPositionByOrdinal)
     .call(moveToNow);
 
-    taskItems.append("rect")
-    .attr("width", itemWidth)
-    .attr("height", itemHeight-1);
-
-    taskItems.append("text")
-    .attr("x", 10)
-    .attr("y", itemHeight / 2)
-    .attr("dy", ".35em")
-    .text(function(d) { return d.title+" ["+d.ord+"]"});
-
     taskItems.call(d3.behavior.drag()
-    .on("dragstart", dragstart)
     .on("drag", drag)
     .on("dragend", dragend));
 
@@ -110,6 +102,13 @@ gtdo.ListView = function() {
   };
 
   this.items = function() { return taskItems };
+
+  var updateListViewItem = function(selection) {
+    selection
+    .style("width", itemWidth-2)
+    .style("height", itemHeight-2)
+    .text(function(d) { return d.title });
+  };
 
   var ordinalToPosition = function(ord) {
     return {
@@ -134,22 +133,14 @@ gtdo.ListView = function() {
     moveToNow(selection.transition().duration(250));
   };
   var moveToNow = function(selection) {
-    selection.attr("transform", function(d) { return "translate("+d.x+","+d.y+")" });
-  };
-
-  var dragstart = function(d) {
-    d3.select(this).call(moveToNow);
-  };
-
-  var dragend = function(d) {
-    setPositionByOrdinal(d)
-    d3.select(this).call(moveToSmooth);
+    selection
+    .style("left", function(d) { return d.x+"px" })
+    .style("top", function(d) { return d.y+"px" });
   };
 
   var drag = function(d) {
-    d.x = d.x + d3.event.dx;
-    d.y = d.y + d3.event.dy;
-
+    d.x += d3.event.dx;
+    d.y += d3.event.dy;
     d.x = Math.max(d.x, 0), d.x = Math.min(d.x, width);
     d.y = Math.max(d.y, 0), d.y = Math.min(d.y, height);
 
@@ -175,6 +166,8 @@ gtdo.ListView = function() {
           d.needsRefresh = true;
         }
       });
+    } else {
+      return;
     }
     d.ord = newOrd;
 
@@ -182,6 +175,11 @@ gtdo.ListView = function() {
     .filter(function(d) { return d.needsRefresh ? d : null })
     .each(setPositionByOrdinal)
     .call(moveToSmooth);
+  };
+
+  var dragend = function(d) {
+    setPositionByOrdinal(d)
+    d3.select(this).call(moveToSmooth);
   };
 }
 
