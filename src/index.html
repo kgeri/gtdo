@@ -10,7 +10,7 @@ staticData = [
  { "key": "T0002", "title": "Buy mineral water", "time": 2 },
  { "key": "T0003", "title": "Buy cola", "deps": ["T0004", "T0005"] },
  { "key": "T0004", "title": "Look for cola", "time": 1 },
- { "key": "T0005", "title": "Pick up cola", "time": 0.5, "resolved": true },
+ { "key": "T0005", "title": "Pick up cola", "time": 0.5, "done": true },
  { "key": "T0006", "title": "Buy vegetables", "deps": ["T0007", "T0008"]},
  { "key": "T0007", "title": "Buy carrot", "time": 0.2 },
  { "key": "T0008", "title": "Buy salad", "time": 0.2 },
@@ -22,7 +22,10 @@ staticData = [
 </head>
 <body>
 
-  <input id="search" type="search"></input>
+  <div class="vertical menubar">
+    <input id="search" type="search"></input>
+    <i id="showDone" class="fa fa-square-o" title="Show completed"></i>
+  </div>
   <div id="tasks"></div>
   <div id="explanation"></div>
 
@@ -30,8 +33,9 @@ staticData = [
 // var tasks = new gtdo.HierarchyView().bind("#tasks", "#explanation", staticData);
 var tasks = new gtdo.ListView().bind("#tasks", staticData);
 var search = new gtdo.SearchFilter().bind("#search", tasks);
+new gtdo.CheckBox("fa-square-o", "fa-check-square").bind("#showDone", tasks.showDone);
 
-d3.select(window).on("resize", tasks.resize);
-window.addEventListener("load", tasks.resize);
+d3.select(window).on("resize", tasks.layout);
+window.addEventListener("load", tasks.layout);
 </script>
 </body>

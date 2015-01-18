@@ -2,17 +2,19 @@
 var gtdo = gtdo || {};
 
 /**
-* Common functions for handling task items.
+* Common functions for handling task entities.
 */
 gtdo.common = {
   keyFn: function(d) { return d.key },
+  notDoneFn: function(d) { return !d.done },
+  ordFn: function(d1, d2) { return d1.ord - d2.ord },
 
   /**
   * Assigns d.ord = i for each datum.
   */
   assignOrdinals: function(data) {
     var ord = 0;
-    for (var i = 0; i < data.length; i++) data[i].ord = ord++;
+    data.forEach(function(d) { d.ord = ord++ });
   },
 
   /**
@@ -40,6 +42,9 @@ gtdo.common = {
       });
     }
     d.ord = newOrd;
+
+    // TODO this sort was needed because otherwise we'd lose the .ord of completed tasks... think of a better way to solve this
+    data.sort(gtdo.common.ordFn);
   },
 
   /**
@@ -125,46 +130,52 @@ gtdo.SearchFilter = function() {
 * A list view for creating, editing and reordering tasks.
 */
 gtdo.ListView = function() {
+  var self = this;
   var width = undefined;
   var height = undefined;
   // TODO compute values from screen size
   var itemWidth = 200;
   var itemHeight = 100;
-  var tasksData = undefined;
   var tasks = undefined;
   var taskItems = undefined;
+  var isShowDone = false;
 
   this.bind = function(containerSelector, data) {
-    tasksData = data;
+    self.data = data;
     tasks = d3.select(containerSelector);
-
-    gtdo.common.assignOrdinals(tasksData);
-
-    taskItems = tasks.selectAll("div")
-    .data(tasksData, gtdo.common.keyFn);
-
-    taskItems.enter()
-    .call(createListViewItem);
-
-    taskItems
-    .each(setPositionByOrdinal)
-    .call(moveToNow);
-
+    taskItems = tasks.selectAll("div");
     return this;
   };
 
-  this.resize = function() {
+  this.layout = function() {
     var bbox = tasks.node().getBoundingClientRect();
     width = bbox.width;
     height = bbox.height;
+
+    var data = activeTasks();
+    taskItems = taskItems
+    .data(data, gtdo.common.keyFn);
+    taskItems.enter().call(createItem);
+    taskItems.exit().remove();
+
+    gtdo.common.assignOrdinals(data);
+
     taskItems
     .each(setPositionByOrdinal)
-    .call(moveToNow);
+    .call(moveToSmooth);
   };
 
   this.items = function() { return taskItems };
+  this.showDone = function(boolean) {
+    isShowDone = boolean;
+    self.layout();
+  };
 
-  var createListViewItem = function(selection) {
+  var activeTasks = function() {
+    return isShowDone ? self.data : self.data.filter(gtdo.common.notDoneFn);
+  };
+
+  var createItem = function(selection) {
     var div = selection
     .append("div")
     .style("width", itemWidth)
@@ -173,9 +184,9 @@ gtdo.ListView = function() {
     var toolbar = div.append("span").attr("class", "toolbar");
 
     var dragBtn = toolbar.append("i").attr("class", "fa fa-bars");
-    var moveUpBtn = toolbar.append("i").attr("class", "fa fa-arrow-up");
-    var moveDownBtn = toolbar.append("i").attr("class", "fa fa-arrow-down");
-    var completeBtn = toolbar.append("i").attr("class", "fa fa-check");
+    var moveUpBtn = toolbar.append("i").attr("class", "fa fa-arrow-up").attr("title", "Move to top");
+    var moveDownBtn = toolbar.append("i").attr("class", "fa fa-arrow-down").attr("title", "Move to bottom");
+    var completeBtn = toolbar.append("i").attr("class", "fa fa-check").attr("title", "Mark completed");
 
     div.append("span")
     .text(function(d) { return d.title });
@@ -183,12 +194,16 @@ gtdo.ListView = function() {
     dragBtn.call(d3.behavior.drag()
     .on("dragstart", dragstart).on("drag", drag).on("dragend", dragend));
     moveUpBtn.on("click", function(d) {
-      gtdo.common.reorder(d, tasksData, 0);
+      gtdo.common.reorder(d, activeTasks(), 0);
       taskItems.each(setPositionByOrdinal).call(moveToSmooth);
     });
     moveDownBtn.on("click", function(d) {
-      gtdo.common.reorder(d, tasksData, tasksData.length-1);
+      gtdo.common.reorder(d, activeTasks(), activeTasks().length-1);
       taskItems.each(setPositionByOrdinal).call(moveToSmooth);
+    });
+    completeBtn.on("click", function(d) {
+      d.done = true;
+      self.layout();
     });
   };
 
@@ -217,6 +232,7 @@ gtdo.ListView = function() {
   };
   var moveToNow = function(selection) {
     selection
+    .attr("class", function(d) { return d.done ? "done" : "" })
     .style("left", function(d) { return d.x+"px" })
     .style("top", function(d) { return d.y+"px" });
   };
@@ -237,9 +253,9 @@ gtdo.ListView = function() {
     draggedItem.call(moveToNow);
 
     var newOrd = positionToOrdinal(d.x + itemWidth / 2, d.y + itemHeight / 2);
-    newOrd = Math.max(newOrd, 0), newOrd = Math.min(newOrd, tasksData.length-1);
+    newOrd = Math.max(newOrd, 0), newOrd = Math.min(newOrd, activeTasks().length-1);
 
-    gtdo.common.reorder(d, tasksData, newOrd);
+    gtdo.common.reorder(d, activeTasks(), newOrd);
 
     taskItems
     .filter(function(d) { return d.needsRefresh ? d : null })
@@ -345,3 +361,26 @@ gtdo.HierarchyView = function() {
 
   this.items = function() { return taskItems };
 }
+
+/**
+* A simple class-based check box for toggling a selection.
+*/
+gtdo.CheckBox = function(uncheckedClass, checkedClass) {
+  var self = this;
+  var checkBox = undefined;
+  var checked = false;
+
+  /**
+  * Binds this check box to a specific element, calling checkListener(boolean) when the element is clicked.
+  */
+  this.bind = function(buttonSelector, checkListener) {
+    checkBox = d3.select(buttonSelector)
+    .classed(uncheckedClass, true)
+    .on("click", function() {
+      self.checked = !self.checked;
+      checkBox.classed(checkedClass, self.checked);
+      checkBox.classed(uncheckedClass, !self.checked);
+      checkListener(self.checked);
+    });
+  };
+};

@@ -6,12 +6,24 @@ body {
   flex-direction: column;
 }
 
+.vertical {
+  display: flex;
+  flex-direction: row;
+}
+
 #search {
   font-size: larger;
   width: 15em;
   height: 1.5em;
-  margin: 5px;
   display: inline;
+}
+
+.menubar * {
+  margin: 5px;
+}
+.menubar .fa {
+  font-size: 1.5em;
+  color: steelblue;
 }
 
 #tasks {
@@ -38,6 +50,9 @@ body {
   border: 1px solid white;
   box-sizing: border-box;
   position: absolute;
+}
+#tasks div.done {
+  background-color: seagreen;
 }
 #tasks span.toolbar {
   width: 20px;
