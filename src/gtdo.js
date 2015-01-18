@@ -186,7 +186,7 @@ gtdo.ListView = function() {
     var dragBtn = toolbar.append("i").attr("class", "fa fa-bars");
     var moveUpBtn = toolbar.append("i").attr("class", "fa fa-arrow-up").attr("title", "Move to top");
     var moveDownBtn = toolbar.append("i").attr("class", "fa fa-arrow-down").attr("title", "Move to bottom");
-    var completeBtn = toolbar.append("i").attr("class", "fa fa-check").attr("title", "Mark completed");
+    var completeBtn = toolbar.append("i").attr("class", "fa fa-check").attr("title", "Complete/uncomplete");
 
     var details = div.append("div").attr("class", "details");
 
@@ -208,7 +208,7 @@ gtdo.ListView = function() {
       taskItems.each(setPositionByOrdinal).call(moveToSmooth);
     });
     completeBtn.on("click", function(d) {
-      d.done = true;
+      d.done = !d.done;
       self.layout();
     });
   };
