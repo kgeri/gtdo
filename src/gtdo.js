@@ -134,8 +134,8 @@ gtdo.ListView = function() {
   var width = undefined;
   var height = undefined;
   // TODO compute values from screen size
-  var itemWidth = 200;
-  var itemHeight = 100;
+  var itemWidth = 300;
+  var itemHeight = 84;
   var tasks = undefined;
   var taskItems = undefined;
   var isShowDone = false;
@@ -188,8 +188,14 @@ gtdo.ListView = function() {
     var moveDownBtn = toolbar.append("i").attr("class", "fa fa-arrow-down").attr("title", "Move to bottom");
     var completeBtn = toolbar.append("i").attr("class", "fa fa-check").attr("title", "Mark completed");
 
-    div.append("span")
-    .text(function(d) { return d.title });
+    var details = div.append("div").attr("class", "details");
+
+    details.append("div")
+    .attr("class", "title").text(function(d) { return d.title });
+    details.append("span")
+    .attr("class", "due").text(function(d) { return d.due });
+    details.append("span")
+    .attr("class", "time").text(function(d) { return d.time ? d.time+"h" : "" });
 
     dragBtn.call(d3.behavior.drag()
     .on("dragstart", dragstart).on("drag", drag).on("dragend", dragend));

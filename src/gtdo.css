@@ -1,5 +1,5 @@
 body {
-  font: sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   margin: 0px;
   overflow: hidden;
   display: flex;
@@ -44,23 +44,49 @@ body {
   stroke-width: 2;
   fill: none;
 }
-#tasks div {
+#tasks > div {
   color: white;
   background-color: steelblue;
   border: 1px solid white;
   box-sizing: border-box;
   position: absolute;
 }
-#tasks div.done {
+#tasks > div.done {
   background-color: seagreen;
 }
-#tasks span.toolbar {
+#tasks > div > span.toolbar {
   width: 20px;
   height: 100%;
   float: left;
 }
-#tasks span.toolbar i.fa {
+#tasks > div > span.toolbar i.fa {
   padding: 2px;
+}
+#tasks > div > div.details {
+  height: 100%;
+  margin-left: 20px;
+  position: relative;
+}
+#tasks div.title {
+  padding: 2px;
+  max-height: 3.3em;
+  overflow: hidden;
+  position: absolute;
+}
+#tasks span.due {
+  padding: 4px;
+  color: lightgray;
+  font-size: smaller;
+  position: absolute;
+  bottom: 0;
+}
+#tasks span.time {
+  padding: 4px;
+  color: lightgray;
+  font-size: larger;
+  position: absolute;
+  bottom: 0;
+  right: 0;
 }
 i.fa {
   cursor: pointer;
