@@ -373,20 +373,25 @@ gtdo.HierarchyView = function() {
 */
 gtdo.CheckBox = function(uncheckedClass, checkedClass) {
   var self = this;
-  var checkBox = undefined;
   var checked = false;
+  var checkBox = undefined;
+  var listener = undefined;
 
   /**
   * Binds this check box to a specific element, calling checkListener(boolean) when the element is clicked.
   */
   this.bind = function(buttonSelector, checkListener) {
+    listener = checkListener
     checkBox = d3.select(buttonSelector)
     .classed(uncheckedClass, true)
-    .on("click", function() {
-      self.checked = !self.checked;
-      checkBox.classed(checkedClass, self.checked);
-      checkBox.classed(uncheckedClass, !self.checked);
-      checkListener(self.checked);
-    });
+    .on("click", self.toggle);
+    return self;
+  };
+
+  this.toggle = function() {
+    self.checked = !self.checked;
+    checkBox.classed(checkedClass, self.checked);
+    checkBox.classed(uncheckedClass, !self.checked);
+    listener(self.checked);
   };
 };
