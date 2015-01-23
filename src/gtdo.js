@@ -80,6 +80,31 @@ gtdo.common = {
   }
 };
 
+gtdo.layout = {
+
+  /**
+   * A linear layout relies on width and height to compute and store d.x and d.y on data entities.
+   * It also relies on d.ord (the ordinal of the entity) being set appropriately. See gtdo.common.assignOrdinals().
+   * The entities will be laid out from top to bottom, then left to right.
+   */
+  Linear: function(width, height, itemWidth, itemHeight) {
+
+    this.setPosition = function(d) {
+      var maxItems = Math.floor(height / itemHeight);
+      d.x = Math.floor(d.ord / maxItems) * itemWidth;
+      d.y = (d.ord % maxItems) * itemHeight;
+    };
+
+    this.getOrdinalByDragPosition = function(d) {
+      var x = d.x + itemWidth / 2, y = d.y + itemHeight / 2;
+      var maxItems = Math.floor(height / itemHeight);
+      var row = Math.floor(y / itemHeight);
+      var column = Math.floor(x / itemWidth);
+      return column * maxItems + row;
+    };
+  },
+};
+
 /**
 * A simple filter for fading out any DOM nodes that don't match the query.
 */
@@ -132,6 +157,7 @@ gtdo.ListView = function() {
   // TODO compute values from screen size
   var itemWidth = 300;
   var itemHeight = 84;
+  var linearLayout = undefined;
   var tasks = undefined;
   var taskItems = undefined;
   var isShowDone = false;
@@ -147,6 +173,7 @@ gtdo.ListView = function() {
     var bbox = tasks.node().getBoundingClientRect();
     width = bbox.width;
     height = bbox.height;
+    linearLayout = new gtdo.layout.Linear(width, height, itemWidth, itemHeight);
 
     var data = activeTasks();
     taskItems = taskItems
@@ -157,7 +184,7 @@ gtdo.ListView = function() {
     gtdo.common.assignOrdinals(data);
 
     taskItems
-    .each(setPositionByOrdinal)
+    .each(linearLayout.setPosition)
     .call(moveToSmooth);
   };
 
@@ -197,36 +224,16 @@ gtdo.ListView = function() {
     .on("dragstart", dragstart).on("drag", drag).on("dragend", dragend));
     moveUpBtn.on("click", function(d) {
       gtdo.common.reorder(d, activeTasks(), 0);
-      taskItems.each(setPositionByOrdinal).call(moveToSmooth);
+      taskItems.each(linearLayout.setPosition).call(moveToSmooth);
     });
     moveDownBtn.on("click", function(d) {
       gtdo.common.reorder(d, activeTasks(), activeTasks().length-1);
-      taskItems.each(setPositionByOrdinal).call(moveToSmooth);
+      taskItems.each(linearLayout.setPosition).call(moveToSmooth);
     });
     completeBtn.on("click", function(d) {
       d.done = !d.done;
       self.layout();
     });
-  };
-
-  var ordinalToPosition = function(ord) {
-    var maxItems = Math.floor(height / itemHeight);
-    return {
-      "x": Math.floor(ord / maxItems) * itemWidth,
-      "y": (ord % maxItems) * itemHeight
-    };
-  };
-
-  var positionToOrdinal = function(x, y) {
-    var maxItems = Math.floor(height / itemHeight);
-    var row = Math.floor(y / itemHeight);
-    var column = Math.floor(x / itemWidth);
-    return column * maxItems + row;
-  };
-
-  var setPositionByOrdinal = function(d) {
-    var pos = ordinalToPosition(d.ord);
-    d.x = pos.x, d.y = pos.y;
   };
 
   var moveToSmooth = function(selection) {
@@ -254,19 +261,19 @@ gtdo.ListView = function() {
 
     draggedItem.call(moveToNow);
 
-    var newOrd = positionToOrdinal(d.x + itemWidth / 2, d.y + itemHeight / 2);
+    var newOrd = linearLayout.getOrdinalByDragPosition(d);
     newOrd = Math.max(newOrd, 0), newOrd = Math.min(newOrd, activeTasks().length-1);
 
     gtdo.common.reorder(d, activeTasks(), newOrd);
 
     taskItems
     .filter(function(d) { return d.needsRefresh ? d : null })
-    .each(setPositionByOrdinal)
+    .each(linearLayout.setPosition)
     .call(moveToSmooth);
   };
 
   var dragend = function(d) {
-    setPositionByOrdinal(d);
+    linearLayout.setPosition(d);
     draggedItem.call(moveToSmooth);
   };
 };
