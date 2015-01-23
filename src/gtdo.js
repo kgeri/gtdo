@@ -87,7 +87,16 @@ gtdo.layout = {
    * It also relies on d.ord (the ordinal of the entity) being set appropriately. See gtdo.common.assignOrdinals().
    * The entities will be laid out from top to bottom, then left to right.
    */
-  Linear: function(width, height, itemWidth, itemHeight) {
+  Linear: function(width, height) {
+    this.width = function() { return width };
+    this.height = function() { return height };
+
+    // TODO compute values from screen size
+    var itemWidth = 300;
+    var itemHeight = 84;
+
+    this.itemWidth = function() { return itemWidth };
+    this.itemHeight = function() { return itemHeight };
 
     this.setPosition = function(d) {
       var maxItems = Math.floor(height / itemHeight);
@@ -96,7 +105,9 @@ gtdo.layout = {
     };
 
     this.getOrdinalByDragPosition = function(d) {
+      // Using a centered position for dragging
       var x = d.x + itemWidth / 2, y = d.y + itemHeight / 2;
+
       var maxItems = Math.floor(height / itemHeight);
       var row = Math.floor(y / itemHeight);
       var column = Math.floor(x / itemWidth);
@@ -152,11 +163,6 @@ gtdo.SearchFilter = function() {
 */
 gtdo.ListView = function() {
   var self = this;
-  var width = undefined;
-  var height = undefined;
-  // TODO compute values from screen size
-  var itemWidth = 300;
-  var itemHeight = 84;
   var linearLayout = undefined;
   var tasks = undefined;
   var taskItems = undefined;
@@ -171,9 +177,7 @@ gtdo.ListView = function() {
 
   this.layout = function() {
     var bbox = tasks.node().getBoundingClientRect();
-    width = bbox.width;
-    height = bbox.height;
-    linearLayout = new gtdo.layout.Linear(width, height, itemWidth, itemHeight);
+    linearLayout = new gtdo.layout.Linear(bbox.width, bbox.height);
 
     var data = activeTasks();
     taskItems = taskItems
@@ -201,8 +205,8 @@ gtdo.ListView = function() {
   var createItem = function(selection) {
     var div = selection
     .append("div")
-    .style("width", itemWidth)
-    .style("height", itemHeight);
+    .style("width", linearLayout.itemWidth())
+    .style("height", linearLayout.itemHeight());
 
     var toolbar = div.append("span").attr("class", "toolbar");
 
@@ -256,8 +260,8 @@ gtdo.ListView = function() {
   var drag = function(d) {
     var coords = d3.mouse(tasks.node());
     d.x = coords[0] - 8, d.y = coords[1] - 8; // TODO d3.event.dx was acting up
-    d.x = Math.max(d.x, 0), d.x = Math.min(d.x, width);
-    d.y = Math.max(d.y, 0), d.y = Math.min(d.y, height);
+    d.x = Math.max(d.x, 0), d.x = Math.min(d.x, linearLayout.width());
+    d.y = Math.max(d.y, 0), d.y = Math.min(d.y, linearLayout.height());
 
     draggedItem.call(moveToNow);
 
@@ -273,8 +277,9 @@ gtdo.ListView = function() {
   };
 
   var dragend = function(d) {
-    linearLayout.setPosition(d);
-    draggedItem.call(moveToSmooth);
+    draggedItem
+    .each(linearLayout.setPosition)
+    .call(moveToSmooth);
   };
 };
 
