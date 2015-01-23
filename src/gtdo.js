@@ -54,35 +54,31 @@ gtdo.common = {
   toHierarchy: function(data) {
     var dataMap = {};
 
-    for(var i=0; i < data.length; i++) {
-      dataMap[data[i].key] = data[i];
-    }
+    data.forEach(function(d) { dataMap[d.key] = d });
 
-    for(var i=0; i < data.length; i++) {
-      var d = data[i];
+    data.forEach(function(d) {
       if(d.deps) {
         d.children = [];
-        for(var j=0; j < d.deps.length; j++) {
-          var dep = dataMap[d.deps[j]];
+        d.deps.forEach(function(depKey) {
+          var dep = dataMap[depKey];
           if(dep) {
             dep.parent = d;
             d.children.push(dep);
           }
-        }
+        });
       }
-    }
+    });
 
     var root = {};
     root.title = "All tasks";
     root.children = [];
-    for(var i=0; i < data.length; i++) {
-      var d = data[i];
+    data.forEach(function(d) {
       if(!d.parent) root.children.push(d);
-    }
+    });
 
     return root;
   }
-}
+};
 
 /**
 * A simple filter for fading out any DOM nodes that don't match the query.
@@ -124,7 +120,7 @@ gtdo.SearchFilter = function() {
     }
     return matches;
   };
-}
+};
 
 /**
 * A list view for creating, editing and reordering tasks.
@@ -223,10 +219,10 @@ gtdo.ListView = function() {
 
   var positionToOrdinal = function(x, y) {
     var maxItems = Math.floor(height / itemHeight);
-    var row = Math.floor(y / itemHeight)
+    var row = Math.floor(y / itemHeight);
     var column = Math.floor(x / itemWidth);
     return column * maxItems + row;
-  }
+  };
 
   var setPositionByOrdinal = function(d) {
     var pos = ordinalToPosition(d.ord);
@@ -270,10 +266,10 @@ gtdo.ListView = function() {
   };
 
   var dragend = function(d) {
-    setPositionByOrdinal(d)
+    setPositionByOrdinal(d);
     draggedItem.call(moveToSmooth);
   };
-}
+};
 
 /**
 * A sunburst diagram for investigating task dependencies.
