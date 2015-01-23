@@ -13,8 +13,8 @@ body {
 
 #search {
   font-size: larger;
-  width: 15em;
-  height: 1.5em;
+  min-width: 15em;
+  max-height: 1.5em;
   display: inline;
 }
 
@@ -51,36 +51,36 @@ body {
   box-sizing: border-box;
   position: absolute;
 }
-#tasks > div.done {
+#tasks > .done {
   background-color: seagreen;
 }
-#tasks > div > span.toolbar {
+#tasks > div > .toolbar {
   width: 20px;
   height: 100%;
   float: left;
 }
-#tasks > div > span.toolbar i.fa {
+#tasks > div > .toolbar i.fa {
   padding: 2px;
 }
-#tasks > div > div.details {
+#tasks > div > .details {
   height: 100%;
   margin-left: 20px;
   position: relative;
 }
-#tasks div.title {
+#tasks .title {
   padding: 2px;
   max-height: 3.3em;
   overflow: hidden;
   position: absolute;
 }
-#tasks span.due {
+#tasks .due {
   padding: 4px;
   color: lightgray;
   font-size: smaller;
   position: absolute;
   bottom: 0;
 }
-#tasks span.time {
+#tasks .time {
   padding: 4px;
   color: lightgray;
   font-size: larger;
@@ -98,7 +98,7 @@ i.fa {
 i.fa:hover {
   color: orange;
 }
-i.fa-bars {
+.fa-bars {
   cursor: move;
 }
 
