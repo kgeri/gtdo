@@ -189,6 +189,7 @@ gtdo.ListView = function() {
 
     taskItems
     .each(linearLayout.setPosition)
+    .call(updateContents)
     .call(moveToSmooth);
   };
 
@@ -202,30 +203,30 @@ gtdo.ListView = function() {
     return isShowDone ? self.data : self.data.filter(gtdo.common.notDoneFn);
   };
 
+  /** Creates a task item and wires its buttons. See also updateContents(). */
   var createItem = function(selection) {
     var div = selection
     .append("div")
+    .classed("task", true)
     .style("width", linearLayout.itemWidth())
     .style("height", linearLayout.itemHeight());
 
-    var toolbar = div.append("span").attr("class", "toolbar");
+    var toolbar = div.append("span").classed("toolbar", true);
 
-    var dragBtn = toolbar.append("i").attr("class", "fa fa-bars");
-    var moveUpBtn = toolbar.append("i").attr("class", "fa fa-arrow-up").attr("title", "Move to top");
-    var moveDownBtn = toolbar.append("i").attr("class", "fa fa-arrow-down").attr("title", "Move to bottom");
-    var completeBtn = toolbar.append("i").attr("class", "fa fa-check").attr("title", "Complete/uncomplete");
+    var dragBtn = toolbar.append("i").classed("fa fa-bars", true);
+    var moveUpBtn = toolbar.append("i").classed("fa fa-arrow-up", true).attr("title", "Move to top");
+    var moveDownBtn = toolbar.append("i").classed("fa fa-arrow-down", true).attr("title", "Move to bottom");
+    var completeBtn = toolbar.append("i").classed("fa fa-check", true).attr("title", "Complete/uncomplete");
 
-    var details = div.append("div").attr("class", "details");
+    var details = div.append("div").classed("details", true);
+    var title = details.append("div").classed("title", true);
+    details.append("span").classed("due", true);
+    details.append("span").classed("time", true);
 
-    details.append("div")
-    .attr("class", "title").text(function(d) { return d.title });
-    details.append("span")
-    .attr("class", "due").text(function(d) { return d.due });
-    details.append("span")
-    .attr("class", "time").text(function(d) { return d.time ? d.time+"h" : "" });
-
-    dragBtn.call(d3.behavior.drag()
-    .on("dragstart", dragstart).on("drag", drag).on("dragend", dragend));
+    // Drag handler
+    dragBtn.call(d3.behavior.drag().on("dragstart", dragstart).on("drag", drag).on("dragend", dragend));
+    
+    // Toolbar button listeners
     moveUpBtn.on("click", function(d) {
       gtdo.common.reorder(d, activeTasks(), 0);
       taskItems.each(linearLayout.setPosition).call(moveToSmooth);
@@ -236,16 +237,46 @@ gtdo.ListView = function() {
     });
     completeBtn.on("click", function(d) {
       d.done = !d.done;
-      self.layout();
+      updateContents(getItem(this));
     });
+    
+    // Editing
+    title.on("click", function(d) {
+      var taskItem = getItem(this);
+      var editor = taskItem.select(".title").text("").append("textarea").classed("editor", true).text(d.title);
+      
+      editor
+      .on("click", function() { d3.event.stopPropagation() })
+      .on("blur", function(d) {
+        d.title = editor.node().value;
+        taskItem.select(".editor").remove();
+        taskItem.call(updateContents);
+      })
+      .node().select();
+    });
+  };
+  
+  /** Returns the taskItem which contains the specified selection, or throws an error if selection is not a child of a task item. */
+  var getItem = function(selection) {
+    var currentNode = d3.select(selection).node();
+    while(currentNode) {
+      if(currentNode.className.indexOf("task") >= 0) return d3.select(currentNode);
+      currentNode = currentNode.parentNode;
+    }
+    throw new Error("Selection "+selection+" does not have a .task parent");
   };
 
   var moveToSmooth = function(selection) {
     moveToNow(selection.transition().duration(250));
   };
+  var updateContents = function(taskItem) {
+    taskItem.classed("done", function(d) { return d.done ? true : false });
+    taskItem.select(".title").text(function(d) { return d.title });
+    taskItem.select(".due").text(function(d) { return d.due });
+    taskItem.select(".time").text(function(d) { return d.time ? d.time+"h" : "" });
+  };
   var moveToNow = function(selection) {
     selection
-    .attr("class", function(d) { return d.done ? "done" : "" })
     .style("left", function(d) { return d.x+"px" })
     .style("top", function(d) { return d.y+"px" });
   };
@@ -335,7 +366,7 @@ gtdo.HierarchyView = function() {
     .attr("transform", "translate(" + dim.width / 2 + "," + dim.height / 2 + ")");
 
     var highlight = svg.append("circle")
-    .attr("class", "highlight")
+    .classed("highlight", true)
     .attr("cx", dim.width / 2)
     .attr("cy", dim.height / 2)
     .attr("r", highlightTween);
