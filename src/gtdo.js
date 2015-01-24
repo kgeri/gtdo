@@ -220,8 +220,8 @@ gtdo.ListView = function() {
 
     var details = div.append("div").classed("details", true);
     var title = details.append("div").classed("title", true);
-    details.append("span").classed("due", true);
-    details.append("span").classed("time", true);
+    var due = details.append("span").classed("due", true);
+    var time = details.append("span").classed("time", true);
 
     // Drag handler
     dragBtn.call(d3.behavior.drag().on("dragstart", dragstart).on("drag", drag).on("dragend", dragend));
@@ -241,19 +241,9 @@ gtdo.ListView = function() {
     });
     
     // Editing
-    title.on("click", function(d) {
-      var taskItem = getItem(this);
-      var editor = taskItem.select(".title").text("").append("textarea").classed("editor", true).text(d.title);
-      
-      editor
-      .on("click", function() { d3.event.stopPropagation() })
-      .on("blur", function(d) {
-        d.title = editor.node().value;
-        taskItem.select(".editor").remove();
-        taskItem.call(updateContents);
-      })
-      .node().select();
-    });
+    title.each(function() { bindTextArea(d3.select(this), "title") });
+    due.each(function() { bindTextField(d3.select(this), "due") });
+    time.each(function() { bindTextField(d3.select(this), "time") });
   };
   
   /** Returns the taskItem which contains the specified selection, or throws an error if selection is not a child of a task item. */
@@ -265,6 +255,40 @@ gtdo.ListView = function() {
     }
     throw new Error("Selection "+selection+" does not have a .task parent");
   };
+  
+  var bindTextArea = function(selection, property) {
+    selection.on("click", function(d) {
+      var taskItem = getItem(this);
+      var editor = selection.text("")
+      .append("textarea").classed("editor", true).text(d[property]);
+      
+      editor
+      .on("click", function() { d3.event.stopPropagation() })
+      .on("blur", function(d) {
+        d[property] = editor.node().value;
+        taskItem.select(".editor").remove();
+        taskItem.call(updateContents);
+      })
+      .node().select();
+    });
+  };
+  
+  var bindTextField = function(selection, property) {
+    selection.on("click", function(d) {
+      var taskItem = getItem(this);
+      var editor = selection.text("")
+      .append("input").classed("editor", true).attr("value", d[property]);
+      
+      editor
+      .on("click", function() { d3.event.stopPropagation() })
+      .on("blur", function(d) {
+        d[property] = editor.node().value;
+        taskItem.select(".editor").remove();
+        taskItem.call(updateContents);
+      })
+      .node().select();
+    });
+  };
 
   var moveToSmooth = function(selection) {
     moveToNow(selection.transition().duration(250));
@@ -273,7 +297,7 @@ gtdo.ListView = function() {
     taskItem.classed("done", function(d) { return d.done ? true : false });
     taskItem.select(".title").text(function(d) { return d.title });
     taskItem.select(".due").text(function(d) { return d.due });
-    taskItem.select(".time").text(function(d) { return d.time ? d.time+"h" : "" });
+    taskItem.select(".time").text(function(d) { return d.time ? d.time+"h" : "-h" });
   };
   var moveToNow = function(selection) {
     selection

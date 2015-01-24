@@ -75,14 +75,15 @@ body {
   position: absolute;
 }
 #tasks .due {
-  padding: 4px;
+  margin: 4px;
   color: lightgray;
   font-size: smaller;
   position: absolute;
   bottom: 0;
 }
 #tasks .time {
-  padding: 4px;
+  margin: 4px;
+  max-width: 2em;
   color: lightgray;
   font-size: larger;
   position: absolute;
