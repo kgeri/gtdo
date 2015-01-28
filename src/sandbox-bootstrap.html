@@ -80,11 +80,8 @@
           </div>
           <div class="panel-footer">
             <i class="glyphicon glyphicon-menu-hamburger"></i>
-            <i class="glyphicon glyphicon-arrow-up" title="Move to top"></i>
-            <i class="glyphicon glyphicon-arrow-down" title="Move to bottom"></i>
             <span class="badge">2015.01.01</span>
             <span class="badge">4h</span>
-            <i class="glyphicon glyphicon-ok" title="Complete/uncomplete"></i>
           </div>
         </div>
       </div>
@@ -110,24 +107,37 @@ gtdo.ListItemSelector = function() {
     var w = size.width, h = size.height;
     var fontSize = h / 4;
     buttonSize = h * 2 / 3;
-    selectedButtonSize = h;
+    selectedButtonSize = h * 4 / 5;
 
     editor = item.append("span");
 
     var svg = editor.append("svg").attr("class", "overlay");
     var top = svg.append("circle").attr("id", "top").attr("cx", w / 2).attr("cy", -h / 4);
     var bottom = svg.append("circle").attr("id", "bottom").attr("cx", w / 2).attr("cy", h + h / 4);
+    var left = svg.append("circle").attr("id", "left").attr("cx", - h / 4).attr("cy", h / 2);
     var right = svg.append("circle").attr("id", "right").attr("cx", w + h / 4).attr("cy", h / 2);
+
+    var moveUp = editor.append("i").classed("glyphicon glyphicon-arrow-up editor-button", true)
+    .style("right", (w / 2 - fontSize / 2) + "px").style("top", "4px")
+    .style("font-size", fontSize + "px");
+
+    var moveDown = editor.append("i").classed("glyphicon glyphicon-arrow-down editor-button", true)
+    .style("right", (w / 2 - fontSize / 2) + "px").style("top", (h - fontSize - 4) + "px")
+    .style("font-size", fontSize + "px");
+
+    var edit = editor.append("i").classed("glyphicon glyphicon-pencil editor-button", true)
+    .style("left", "4px").style("top", (h / 2 - fontSize / 2) + "px")
+    .style("font-size", fontSize + "px");
 
     var complete = editor.append("i").classed("glyphicon glyphicon-ok editor-button", true)
     .style("right", "4px").style("top", (h / 2 - fontSize / 2) + "px")
-    .style("font-size", fontSize + "px").style("display", "none");
+    .style("font-size", fontSize + "px");
 
-    svg.selectAll("circle").attr("r", 0).attr("r", buttonSize)
-    complete.style("display", "");
+    svg.selectAll("circle").attr("r", 0).attr("r", buttonSize);
 
     top.on("mouseenter", buttonMouseEnter).on("mouseleave", buttonMouseLeave);
     bottom.on("mouseenter", buttonMouseEnter).on("mouseleave", buttonMouseLeave);
+    left.on("mouseenter", buttonMouseEnter).on("mouseleave", buttonMouseLeave);
     right.on("mouseenter", buttonMouseEnter).on("mouseleave", buttonMouseLeave);
   };
 
