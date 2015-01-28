@@ -4,6 +4,7 @@
   <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.js" charset="utf-8"></script>
   <style>
   body {
     padding-top: 70px;
@@ -14,7 +15,7 @@
     position: relative;
   }
   .glyphicon-ok {
-    float: right;
+    float: left;
   }
   svg.overlay {
     position: absolute;
@@ -24,7 +25,13 @@
     height: 100%;
   }
   .overlay circle {
-    fill: rgba(255,165,0,0.35);
+    fill: orange;
+    opacity: 0.35;
+  }
+  .editor-button {
+    color: white;
+    position: absolute;
+    pointer-events:none;
   }
   </style>
 </head>
@@ -79,9 +86,6 @@
             <span class="badge">4h</span>
             <i class="glyphicon glyphicon-ok" title="Complete/uncomplete"></i>
           </div>
-          <svg class="overlay">
-            <circle cx="-100" cy="-100" r="200"></circle>
-          </svg>
         </div>
       </div>
     </div>
@@ -89,4 +93,66 @@
 
 <script src="https://code.jquery.com/jquery-2.1.3.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+<script>
+"use strict";
+var gtdo = gtdo || {};
+
+gtdo.ListItemSelector = function() {
+  var editor = undefined;
+  var buttonSize = undefined;
+  var selectedButtonSize = undefined;
+
+  this.bind = function(listItem) {
+    if(editor) editor.remove();
+
+    var item = d3.select(listItem);
+    var size = item.node().getBoundingClientRect();
+    var w = size.width, h = size.height;
+    var fontSize = h / 4;
+    buttonSize = h * 2 / 3;
+    selectedButtonSize = h;
+
+    editor = item.append("span");
+
+    var svg = editor.append("svg").attr("class", "overlay");
+    var top = svg.append("circle").attr("id", "top").attr("cx", w / 2).attr("cy", -h / 4);
+    var bottom = svg.append("circle").attr("id", "bottom").attr("cx", w / 2).attr("cy", h + h / 4);
+    var right = svg.append("circle").attr("id", "right").attr("cx", w + h / 4).attr("cy", h / 2);
+
+    var complete = editor.append("i").classed("glyphicon glyphicon-ok editor-button", true)
+    .style("right", "4px").style("top", (h / 2 - fontSize / 2) + "px")
+    .style("font-size", fontSize + "px").style("display", "none");
+
+    svg.selectAll("circle").attr("r", 0).attr("r", buttonSize)
+    complete.style("display", "");
+
+    top.on("mouseenter", buttonMouseEnter).on("mouseleave", buttonMouseLeave);
+    bottom.on("mouseenter", buttonMouseEnter).on("mouseleave", buttonMouseLeave);
+    right.on("mouseenter", buttonMouseEnter).on("mouseleave", buttonMouseLeave);
+  };
+
+  this.unbind = function() {
+    if(!editor) return; editor.remove();
+  };
+
+  var buttonMouseEnter = function() {
+    d3.select(this).transition().duration(200).attr("r", selectedButtonSize).style("opacity", "1.0");
+  };
+
+  var buttonMouseLeave = function() {
+    d3.select(this).transition().duration(200).attr("r", buttonSize).style("opacity", "");
+  };
+};
+
+var selector = new gtdo.ListItemSelector();
+
+var hovered = false;
+d3.select(".task")
+.on("mouseenter", function() {
+  selector.bind(this);
+})
+.on("mouseleave", function() {
+  selector.unbind();
+});
+</script>
 </body>
