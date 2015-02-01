@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="gtdo.css">
 <script>
 staticData = [
- { "key": "T0001", "title": "Fetch groceries", "due": "20150106", "deps": ["T0002", "T0003", "T0006"] },
+ { "key": "T0001", "title": "Fetch groceries", "due": "2015-01-06", "deps": ["T0002", "T0003", "T0006"] },
  { "key": "T0002", "title": "Buy mineral water", "time": 2 },
  { "key": "T0003", "title": "Buy cola", "deps": ["T0004", "T0005"] },
  { "key": "T0004", "title": "Look for cola", "time": 1 },
@@ -65,8 +65,8 @@ staticData = [
     </div>
   </div>
 
-<script src="https://code.jquery.com/jquery-2.1.3.js"></script>
-<script src="https://code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.js" charset="utf-8"></script>
 <script src="gtdo.js" charset="utf-8"></script>
@@ -75,14 +75,14 @@ $(function() {
   // var tasks = new gtdo.HierarchyView().bind("#tasks", "#explanation", staticData);
   var tasks = new gtdo.ListView().bind("#tasks", staticData);
   var search = new gtdo.SearchFilter().bind("#search", tasks);
-  new gtdo.ToggleButton("", "active").bind("#showDone", tasks.showDone).toggle();
-
-  tasks.onSelection(function(d) {
-    $("#title").val(d.title).select();
-    $("#due").val(gtdo.common.toDatePickerDate(d.due));
-    $("#deps").val(d.deps);
-    $("#tags").val(d.tags);
+  tasks.onSelection(function(accessor) {
+    gtdo.common.bind("#title", accessor.args("title"));
+    gtdo.common.bind("#due", accessor.args("due"));
+    gtdo.common.bind("#deps", accessor.args("deps"));
+    gtdo.common.bind("#tags", accessor.args("tags"));
   });
+
+  new gtdo.ToggleButton("", "active").bind("#showDone", tasks.showDone).toggle();
 });
 
 d3.select(window).on("resize", tasks.layout);

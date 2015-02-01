@@ -2,6 +2,17 @@
 var gtdo = gtdo || {};
 
 /**
+* Pimps Function.args with a new method called partial(...), that returns a partial function using the specified arguments.
+*/
+Function.prototype.args = function() {
+  if (typeof this !== "function") throw new TypeError("Function.prototype.arg needs to be called on a function");
+  var slice = Array.prototype.slice;
+  var args = slice.call(arguments);
+  var fn = this;
+  return function() { return fn.apply(this, args.concat(slice.call(arguments))) };
+};
+
+/**
 * Common functions for handling task entities.
 */
 gtdo.common = {
@@ -64,6 +75,24 @@ gtdo.common = {
     });
 
     return root;
+  },
+
+  /**
+  * Binds the element identified by 'selector' to 'property'.
+  * The 'property' is expected to be a function(value), where value is optional.
+  * Omitting the value should return the current value, specifying it should update.
+  */
+  bind: function(selector, property) {
+    var editor = d3.select(selector).on("blur", null);
+    switch(editor.node().tagName.toUpperCase()) {
+      case "TEXTAREA":
+      case "INPUT":
+        editor.property("value", property() ? property() : "");
+        editor.on("blur", function() { property(this.value) });
+        break;
+      default:
+        throw new Error("Unsupported editor: " + editor.node());
+    }
   }
 };
 
@@ -115,6 +144,7 @@ gtdo.ListView = function() {
   var isShowDone = false;
   var tasks = undefined;
   var taskItems = undefined;
+  var selectionHandler = undefined;
 
   this.bind = function(selector, data) {
     self.data = data;
@@ -155,16 +185,30 @@ gtdo.ListView = function() {
     .on("mouseleave", function() {
       editor.unbind();
     });
+
+    if(selectionHandler) {
+      taskItems.on("click", null).on("click", function(d) {
+        var task = gtdo.common.closest(this, "task");
+        selectionHandler(function(name, value) {
+          if(!value) return d[name];
+          else {
+            d[name] = value;
+            updateContents(task);
+          }
+        });
+      });
+    }
   };
 
   this.onSelection = function(handler) {
-    taskItems.on("click", null).on("click", handler);
-  }
+    selectionHandler = handler;
+  };
 
   this.items = function() { return taskItems };
   this.showDone = function(boolean) {
     isShowDone = boolean;
     self.layout();
+    return this;
   };
 
   var activeTasks = function() {
