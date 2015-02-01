@@ -198,7 +198,6 @@ gtdo.TaskEditor = function() {
   var selectedButtonSize = undefined;
   var topBtn = undefined;
   var bottomBtn = undefined;
-  var leftBtn = undefined;
   var rightBtn = undefined;
 
   this.bind = function(selector) {
@@ -217,8 +216,11 @@ gtdo.TaskEditor = function() {
     var svg = editor.append("svg").attr("class", "overlay");
     topBtn = svg.append("circle").attr("id", "top").attr("cx", w / 2).attr("cy", -buttonSize/2);
     bottomBtn = svg.append("circle").attr("id", "bottom").attr("cx", w / 2).attr("cy", h + buttonSize/2);
-    leftBtn = svg.append("circle").attr("id", "left").attr("cx", -buttonSize/2).attr("cy", h / 2);
     rightBtn = svg.append("circle").attr("id", "right").attr("cx", w + buttonSize/2).attr("cy", h / 2);
+
+    topBtn.append("title").text("Move to top");
+    bottomBtn.append("title").text("Move to bottom");
+    rightBtn.append("title").text("Complete/uncomplete");
 
     var moveUp = editor.append("i")
     .classed("glyphicon glyphicon-arrow-up editor-button", true)
@@ -227,10 +229,6 @@ gtdo.TaskEditor = function() {
     var moveDown = editor.append("i")
     .classed("glyphicon glyphicon-arrow-down editor-button", true)
     .style("right", (w / 2 - fontSize / 2) + "px").style("top", (h - fontSize - 4) + "px");
-
-    var edit = editor.append("i")
-    .classed("glyphicon glyphicon-pencil editor-button", true)
-    .style("left", "4px").style("top", (h / 2 - fontSize / 2) + "px");
 
     var complete = editor.append("i")
     .classed("glyphicon glyphicon-ok editor-button", true)
