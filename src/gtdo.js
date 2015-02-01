@@ -9,42 +9,29 @@ gtdo.common = {
   notDoneFn: function(d) { return !d.done },
   ordFn: function(d1, d2) { return d1.ord - d2.ord },
 
-  /**
-  * Assigns d.ord = i for each datum.
-  */
-  assignOrdinals: function(data) {
-    var ord = 0;
-    data.forEach(function(d) { d.ord = ord++ });
+  toDatePickerDate: function(value) {
+    if(!value) return undefined;
+    return value.replace(/(\d{4})(\d{2})(\d{2})/, function(match, year, month, date) {
+      return year+"-"+month+"-"+date;
+    });
+  },
+
+  closest: function(node, className) {
+    var currentNode = d3.select(node).node();
+    while(currentNode) {
+      var cls = currentNode.getAttribute("class");
+      if(cls && cls.indexOf("task") >= 0) return d3.select(currentNode);
+      currentNode = currentNode.parentNode;
+    }
+    throw new Error("Selection "+selection+" does not have a .task parent");
   },
 
   /**
-  * Sets d.ord=newOrd, and makes sure that no other datum has the same ord in data. Shifts the other entries' .ord value if necessary.
-  * Sets d.needsRefresh on all entries as a side-effect. This is used to improve redraw performance.
+  * Moves the datum d to the position newOrd in the data array.
   */
   reorder: function(d, data, newOrd) {
-    var oldOrd = d.ord;
-
-    data.forEach(function(d) { d.needsRefresh = false });
-
-    if(oldOrd < newOrd) {
-      data.forEach(function(d) {
-        if(d.ord > oldOrd && d.ord <= newOrd) {
-          d.ord -= 1;
-          d.needsRefresh = true;
-        }
-      });
-    } else if(oldOrd > newOrd) {
-      data.forEach(function(d) {
-        if(d.ord >= newOrd && d.ord < oldOrd) {
-          d.ord += 1;
-          d.needsRefresh = true;
-        }
-      });
-    }
-    d.ord = newOrd;
-
-    // TODO this sort was needed because otherwise we'd lose the .ord of completed tasks... think of a better way to solve this
-    data.sort(gtdo.common.ordFn);
+    var oldOrd = data.indexOf(d);
+    data.splice(newOrd, 0, data.splice(oldOrd, 1)[0]);
   },
 
   /**
@@ -80,42 +67,6 @@ gtdo.common = {
   }
 };
 
-gtdo.layout = {
-
-  /**
-   * A linear layout relies on width and height to compute and store d.x and d.y on data entities.
-   * It also relies on d.ord (the ordinal of the entity) being set appropriately. See gtdo.common.assignOrdinals().
-   * The entities will be laid out from top to bottom, then left to right.
-   */
-  Linear: function(width, height) {
-    this.width = function() { return width };
-    this.height = function() { return height };
-
-    // TODO compute values from screen size
-    var itemWidth = 300;
-    var itemHeight = 84;
-
-    this.itemWidth = function() { return itemWidth };
-    this.itemHeight = function() { return itemHeight };
-
-    this.setPosition = function(d) {
-      var maxItems = Math.floor(height / itemHeight);
-      d.x = Math.floor(d.ord / maxItems) * itemWidth;
-      d.y = (d.ord % maxItems) * itemHeight;
-    };
-
-    this.getOrdinalByDragPosition = function(d) {
-      // Using a centered position for dragging
-      var x = d.x + itemWidth / 2, y = d.y + itemHeight / 2;
-
-      var maxItems = Math.floor(height / itemHeight);
-      var row = Math.floor(y / itemHeight);
-      var column = Math.floor(x / itemWidth);
-      return column * maxItems + row;
-    };
-  },
-};
-
 /**
 * A simple filter for fading out any DOM nodes that don't match the query.
 */
@@ -126,8 +77,8 @@ gtdo.SearchFilter = function() {
     .on("input", null)  // remove any previous listeners
     .on("input", function(d) {
       var cleanQuery = clean(this.value);
-      view.items().style("opacity", function(d) {
-        return matches(clean(d.title), cleanQuery) ? "" : "0.25";
+      view.items().style("display", function(d) {
+        return matches(clean(d.title), cleanQuery) ? "" : "none";
       });
     });
     return this;
@@ -158,40 +109,57 @@ gtdo.SearchFilter = function() {
   };
 };
 
-/**
-* A list view for creating, editing and reordering tasks.
-*/
 gtdo.ListView = function() {
   var self = this;
-  var linearLayout = undefined;
+  var editor = new gtdo.TaskEditor();
+  var isShowDone = false;
   var tasks = undefined;
   var taskItems = undefined;
-  var isShowDone = false;
 
-  this.bind = function(containerSelector, data) {
+  this.bind = function(selector, data) {
     self.data = data;
-    tasks = d3.select(containerSelector);
-    taskItems = tasks.selectAll("div");
+    tasks = d3.select(selector);
+    taskItems = tasks.selectAll(".task");
+
+    $(selector).sortable();
+    $(selector).disableSelection();
+
     return this;
   };
 
   this.layout = function() {
-    var bbox = tasks.node().getBoundingClientRect();
-    linearLayout = new gtdo.layout.Linear(bbox.width, bbox.height);
-
-    var data = activeTasks();
-    taskItems = taskItems
-    .data(data, gtdo.common.keyFn);
+    taskItems = taskItems.data(activeTasks(), gtdo.common.keyFn);
     taskItems.enter().call(createItem);
     taskItems.exit().remove();
-
-    gtdo.common.assignOrdinals(data);
+    taskItems.order();
 
     taskItems
-    .each(linearLayout.setPosition)
     .call(updateContents)
-    .call(moveToSmooth);
+    .on("mouseenter", null)
+    .on("mouseenter", function() {
+      editor.bind(this)
+      .onMoveUp(function(d) {
+        gtdo.common.reorder(d, self.data, 0);
+        self.layout();
+      })
+      .onMoveDown(function(d) {
+        gtdo.common.reorder(d, self.data, self.data.length-1);
+        self.layout();
+      })
+      .onComplete(function(d) {
+        d.done = !d.done;
+        updateContents(gtdo.common.closest(this, "task"));
+      });
+    })
+    .on("mouseleave", null)
+    .on("mouseleave", function() {
+      editor.unbind();
+    });
   };
+
+  this.onSelection = function(handler) {
+    taskItems.on("click", null).on("click", handler);
+  }
 
   this.items = function() { return taskItems };
   this.showDone = function(boolean) {
@@ -205,136 +173,103 @@ gtdo.ListView = function() {
 
   /** Creates a task item and wires its buttons. See also updateContents(). */
   var createItem = function(selection) {
-    var div = selection
-    .append("div")
-    .classed("task", true)
-    .style("width", linearLayout.itemWidth())
-    .style("height", linearLayout.itemHeight());
-
-    var toolbar = div.append("span").classed("toolbar", true);
-
-    var dragBtn = toolbar.append("i").classed("fa fa-bars", true);
-    var moveUpBtn = toolbar.append("i").classed("fa fa-arrow-up", true).attr("title", "Move to top");
-    var moveDownBtn = toolbar.append("i").classed("fa fa-arrow-down", true).attr("title", "Move to bottom");
-    var completeBtn = toolbar.append("i").classed("fa fa-check", true).attr("title", "Complete/uncomplete");
-
-    var details = div.append("div").classed("details", true);
-    var title = details.append("div").classed("title", true);
-    var due = details.append("span").classed("due", true);
-    var time = details.append("span").classed("time", true);
-
-    // Drag handler
-    dragBtn.call(d3.behavior.drag().on("dragstart", dragstart).on("drag", drag).on("dragend", dragend));
-    
-    // Toolbar button listeners
-    moveUpBtn.on("click", function(d) {
-      gtdo.common.reorder(d, activeTasks(), 0);
-      taskItems.each(linearLayout.setPosition).call(moveToSmooth);
-    });
-    moveDownBtn.on("click", function(d) {
-      gtdo.common.reorder(d, activeTasks(), activeTasks().length-1);
-      taskItems.each(linearLayout.setPosition).call(moveToSmooth);
-    });
-    completeBtn.on("click", function(d) {
-      d.done = !d.done;
-      updateContents(getItem(this));
-    });
-    
-    // Editing
-    title.each(function() { bindTextArea(d3.select(this), "title") });
-    due.each(function() { bindTextField(d3.select(this), "due") });
-    time.each(function() { bindTextField(d3.select(this), "time") });
-  };
-  
-  /** Returns the taskItem which contains the specified selection, or throws an error if selection is not a child of a task item. */
-  var getItem = function(selection) {
-    var currentNode = d3.select(selection).node();
-    while(currentNode) {
-      if(currentNode.className.indexOf("task") >= 0) return d3.select(currentNode);
-      currentNode = currentNode.parentNode;
-    }
-    throw new Error("Selection "+selection+" does not have a .task parent");
-  };
-  
-  var bindTextArea = function(selection, property) {
-    selection.on("click", function(d) {
-      var taskItem = getItem(this);
-      var editor = selection.text("")
-      .append("textarea").classed("editor", true).text(d[property]);
-      
-      editor
-      .on("click", function() { d3.event.stopPropagation() })
-      .on("blur", function(d) {
-        d[property] = editor.node().value;
-        taskItem.select(".editor").remove();
-        taskItem.call(updateContents);
-      })
-      .node().select();
-    });
-  };
-  
-  var bindTextField = function(selection, property) {
-    selection.on("click", function(d) {
-      var taskItem = getItem(this);
-      var editor = selection.text("")
-      .append("input").classed("editor", true).attr("value", d[property]);
-      
-      editor
-      .on("click", function() { d3.event.stopPropagation() })
-      .on("blur", function(d) {
-        d[property] = editor.node().value;
-        taskItem.select(".editor").remove();
-        taskItem.call(updateContents);
-      })
-      .node().select();
-    });
+    var task = selection.append("div").classed("task panel panel-primary", true);
+    var body = task.append("div").classed("title panel-body", true);
+    var footer = task.append("div").classed("panel-footer", true);
+    footer.append("span").classed("due badge", true);
+    footer.append("span").classed("time badge", true);
   };
 
-  var moveToSmooth = function(selection) {
-    moveToNow(selection.transition().duration(250));
+  var updateContents = function(task) {
+    task.classed("done", function(d) { return d.done ? true : false });
+    task.select(".title").text(function(d) { return d.title });
+    task.select(".due").text(function(d) { return d.due });
+    task.select(".time").text(function(d) { return d.time ? d.time+"h" : "-h" });
   };
-  var updateContents = function(taskItem) {
-    taskItem.classed("done", function(d) { return d.done ? true : false });
-    taskItem.select(".title").text(function(d) { return d.title });
-    taskItem.select(".due").text(function(d) { return d.due });
-    taskItem.select(".time").text(function(d) { return d.time ? d.time+"h" : "-h" });
+};
+
+/**
+* A hovering editor for manipulating tasks.
+* Supports 'move to top', 'move to bottom', and 'mark as completed'.
+*/
+gtdo.TaskEditor = function() {
+  var editor = undefined;
+  var buttonSize = undefined;
+  var selectedButtonSize = undefined;
+  var topBtn = undefined;
+  var bottomBtn = undefined;
+  var leftBtn = undefined;
+  var rightBtn = undefined;
+
+  this.bind = function(selector) {
+    if(editor) editor.remove();
+
+    var item = d3.select(selector);
+    var size = item.node().getBoundingClientRect();
+    var w = size.width, h = size.height;
+
+    // TODO compute these
+    buttonSize = 40; selectedButtonSize = 60;
+    var fontSize = buttonSize / 2;
+
+    editor = item.append("span").style("width", w+"px").style("height", h+"px");
+
+    var svg = editor.append("svg").attr("class", "overlay");
+    topBtn = svg.append("circle").attr("id", "top").attr("cx", w / 2).attr("cy", -buttonSize/2);
+    bottomBtn = svg.append("circle").attr("id", "bottom").attr("cx", w / 2).attr("cy", h + buttonSize/2);
+    leftBtn = svg.append("circle").attr("id", "left").attr("cx", -buttonSize/2).attr("cy", h / 2);
+    rightBtn = svg.append("circle").attr("id", "right").attr("cx", w + buttonSize/2).attr("cy", h / 2);
+
+    var moveUp = editor.append("i")
+    .classed("glyphicon glyphicon-arrow-up editor-button", true)
+    .style("right", (w / 2 - fontSize / 2) + "px").style("top", "4px");
+
+    var moveDown = editor.append("i")
+    .classed("glyphicon glyphicon-arrow-down editor-button", true)
+    .style("right", (w / 2 - fontSize / 2) + "px").style("top", (h - fontSize - 4) + "px");
+
+    var edit = editor.append("i")
+    .classed("glyphicon glyphicon-pencil editor-button", true)
+    .style("left", "4px").style("top", (h / 2 - fontSize / 2) + "px");
+
+    var complete = editor.append("i")
+    .classed("glyphicon glyphicon-ok editor-button", true)
+    .style("right", "4px").style("top", (h / 2 - fontSize / 2) + "px");
+
+    editor.selectAll("i").style("font-size", fontSize + "px");
+
+    svg.selectAll("circle")
+    .attr("r", 0).attr("r", buttonSize)
+    .on("mouseenter", buttonMouseEnter).on("mouseleave", buttonMouseLeave);
+
+    return this;
   };
-  var moveToNow = function(selection) {
-    selection
-    .style("left", function(d) { return d.x+"px" })
-    .style("top", function(d) { return d.y+"px" });
+
+  this.unbind = function() {
+    if(!editor) return; editor.remove();
   };
 
-  var draggedItem = undefined;
-  var dragstart = function(d) {
-    draggedItem = d3.select(this.parentNode.parentNode);
-    taskItems.style("z-index", "0");
-    draggedItem.style("z-index", "1");
+  this.onMoveUp = function(handler) {
+    topBtn.on("click", handler);
+    return this;
   };
 
-  var drag = function(d) {
-    var coords = d3.mouse(tasks.node());
-    d.x = coords[0] - 8, d.y = coords[1] - 8; // TODO d3.event.dx was acting up
-    d.x = Math.max(d.x, 0), d.x = Math.min(d.x, linearLayout.width());
-    d.y = Math.max(d.y, 0), d.y = Math.min(d.y, linearLayout.height());
-
-    draggedItem.call(moveToNow);
-
-    var newOrd = linearLayout.getOrdinalByDragPosition(d);
-    newOrd = Math.max(newOrd, 0), newOrd = Math.min(newOrd, activeTasks().length-1);
-
-    gtdo.common.reorder(d, activeTasks(), newOrd);
-
-    taskItems
-    .filter(function(d) { return d.needsRefresh ? d : null })
-    .each(linearLayout.setPosition)
-    .call(moveToSmooth);
+  this.onMoveDown = function(handler) {
+    bottomBtn.on("click", handler);
+    return this;
   };
 
-  var dragend = function(d) {
-    draggedItem
-    .each(linearLayout.setPosition)
-    .call(moveToSmooth);
+  this.onComplete = function(handler) {
+    rightBtn.on("click", handler);
+    return this;
+  };
+
+  var buttonMouseEnter = function() {
+    d3.select(this).transition().duration(200).attr("r", selectedButtonSize).style("opacity", "1.0");
+  };
+
+  var buttonMouseLeave = function() {
+    d3.select(this).transition().duration(200).attr("r", buttonSize).style("opacity", "");
   };
 };
 
@@ -434,7 +369,7 @@ gtdo.HierarchyView = function() {
 /**
 * A simple class-based check box for toggling a selection.
 */
-gtdo.CheckBox = function(uncheckedClass, checkedClass) {
+gtdo.ToggleButton = function(uncheckedClass, checkedClass) {
   var self = this;
   var checked = false;
   var checkBox = undefined;
@@ -443,9 +378,9 @@ gtdo.CheckBox = function(uncheckedClass, checkedClass) {
   /**
   * Binds this check box to a specific element, calling checkListener(boolean) when the element is clicked.
   */
-  this.bind = function(buttonSelector, checkListener) {
+  this.bind = function(selector, checkListener) {
     listener = checkListener
-    checkBox = d3.select(buttonSelector)
+    checkBox = d3.select(selector)
     .classed(uncheckedClass, true)
     .on("click", self.toggle);
     return self;
