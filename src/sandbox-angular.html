@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html ng-app="gtdo">
+
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular.min.js"></script>
+    <script src="gtdo-angular.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+        <form class="navbar-form navbar-left">
+            <input type="text" class="form-control" placeholder="Search...">
+        </form>
+    </nav>
+    <div class="container-fluid">
+        <div id="tasks" class="main" ng-controller="TimeLogController as tlc">
+            <div class="task panel panel-primary" ng-repeat="task in tlc.tasks">
+                <div class="panel-body">{{task.title}}</div>
+                <div class="panel-footer">
+                    <span class="badge">4h</span>
+                    <span class="badge">2015.01.01</span>
+                </div>
+            </div>
+            <!-- ... -->
+        </div>
+    </div>
+    <!--script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script-->
+</body>
