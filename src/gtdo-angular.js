@@ -1,6 +1,6 @@
 "use strict";
 
-var gtdo = angular.module('gtdo', []);
+var gtdo = angular.module('gtdo', ['ui.calendar']);
 
 gtdo.controller('TimeLogController', function() {
     var tlc = this;

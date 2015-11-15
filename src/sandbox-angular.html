@@ -4,7 +4,12 @@
 <head>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/2.4.0/fullcalendar.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-calendar/1.0.0/calendar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/2.4.0/fullcalendar.min.js"></script>
     <script src="gtdo-angular.js"></script>
 </head>
 
@@ -14,6 +19,7 @@
             <input type="text" class="form-control" placeholder="Search...">
         </form>
     </nav>
+    <div ui-calendar="uiConfig.calendar" class="span8 calendar" ng-model="eventSources"></div>
     <div class="container-fluid">
         <div id="tasks" class="main" ng-controller="TimeLogController as tlc">
             <div class="task panel panel-primary" ng-repeat="task in tlc.tasks">
